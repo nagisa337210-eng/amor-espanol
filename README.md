@@ -1,6 +1,30 @@
-# Amor Español
+# Amor Español 💕
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+スペイン人男性と仲良くなるための、実践的なスペイン語学習アプリです。
+
+- **Swipe（学習）**: 1000語の単語カードをスワイプで覚える（右：覚えた / 左：まだ）。進捗はブラウザに保存。
+- **Chat（実践）**: 5人のキャラ（Javi, Alejandro, Mateo, Carlos, Diego）とスペイン語でチャット。文法修正・情熱的言い回し・返信を Gemini API で取得。
+- **Profile（進捗）**: 準備中。
+
+## 技術スタック
+
+- Next.js 16 (App Router), TypeScript, Tailwind CSS
+- Framer Motion, Lucide React, @google/generative-ai
+
+## 開発
+
+```bash
+npm install
+npm run dev
+```
+
+`.env.local` に `NEXT_PUBLIC_GEMINI_API_KEY` を設定するとチャットが利用できます。
+
+## デプロイ（Vercel）
+
+詳細は **[DEPLOY.md](./DEPLOY.md)** を参照してください。GitHub リポジトリを Vercel にインポートし、環境変数 `NEXT_PUBLIC_GEMINI_API_KEY` を設定してデプロイします。
+
+---
 
 ## GitHub リポジトリと初回プッシュ
 
