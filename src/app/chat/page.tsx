@@ -256,7 +256,7 @@ export default function ChatPage() {
         )}
       </header>
 
-      <main className="flex-1 overflow-hidden px-3 pb-24 pt-4">
+      <main className="flex-1 overflow-hidden px-3 pb-32 pt-4">
         <div
           ref={listRef}
           className="flex h-full flex-col gap-3 overflow-y-auto"
@@ -358,9 +358,13 @@ export default function ChatPage() {
         </div>
       </main>
 
+      {/* 入力欄：常にタブバーの上に表示 */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-20 border-t border-pink-200/50 bg-white/95 px-3 pb-6 pt-3 backdrop-blur-md"
-        style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+        className="fixed left-0 right-0 z-40 border-t border-pink-200/50 bg-white/95 px-3 pt-3 backdrop-blur-md"
+        style={{
+          bottom: "5.5rem",
+          paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))",
+        }}
       >
         <div className="mx-auto flex max-w-lg items-end gap-2">
           <input
