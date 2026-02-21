@@ -7,9 +7,9 @@ import { BookOpen, MessageCircle, User } from "lucide-react";
 export type TabId = "swipe" | "chat" | "profile";
 
 const tabs: { id: TabId; label: string; href: string; icon: React.ReactNode }[] = [
-  { id: "swipe", label: "Swipe（学習）", href: "/", icon: <BookOpen size={22} /> },
-  { id: "chat", label: "Chat（実践）", href: "/chat", icon: <MessageCircle size={22} /> },
-  { id: "profile", label: "Profile（進捗）", href: "/profile", icon: <User size={22} /> },
+  { id: "swipe", label: "Tarjeta", href: "/", icon: <BookOpen size={22} /> },
+  { id: "chat", label: "Chat", href: "/chat", icon: <MessageCircle size={22} /> },
+  { id: "profile", label: "Perfil", href: "/profile", icon: <User size={22} /> },
 ];
 
 function getActiveTab(pathname: string): TabId {
