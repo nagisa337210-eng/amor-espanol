@@ -65,7 +65,7 @@ export function SwipeCard({
         aria-hidden
       >
         <span
-          className="rounded-2xl px-4 py-2 text-lg font-bold text-amber-700"
+          className="rounded-2xl px-4 py-2 text-lg font-bold text-amber-600"
           style={{ background: "var(--swipe-yet)" }}
         >
           まだ
@@ -88,7 +88,7 @@ export function SwipeCard({
 
       {/* カード本体 */}
       <motion.div
-        className="flex flex-col gap-4 rounded-[28px] border border-pink-100/60 p-8"
+        className="flex flex-col gap-4 rounded-[28px] border border-cyan-100/60 p-8"
         style={{
           background: "var(--card-bg)",
           boxShadow: "var(--shadow-card)",
@@ -96,7 +96,7 @@ export function SwipeCard({
         }}
         whileTap={{ scale: 0.98 }}
       >
-        <p className="text-center text-2xl font-bold tracking-tight text-amber-900">
+        <p className="text-center text-2xl font-bold tracking-tight text-teal-800">
           {card.spanish}
         </p>
         <p className="text-center text-lg text-stone-600">

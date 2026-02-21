@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { AnimatePresence } from "framer-motion";
 import { TabBar } from "@/components/TabBar";
 import { SwipeCard } from "@/components/SwipeCard";
+import { CharacterToast, getRandomToastContent } from "@/components/CharacterToast";
 import type { WordItem } from "@/types/word";
 import wordsData from "@/data/words.json";
 
@@ -49,6 +51,9 @@ const words = wordsData as WordItem[];
 export default function Home() {
   const [cards, setCards] = useState<WordItem[]>([]);
   const [isReady, setIsReady] = useState(false);
+  const [toast, setToast] = useState<ReturnType<typeof getRandomToastContent> | null>(null);
+  const [toastId, setToastId] = useState(0);
+  const rightSwipeCount = useRef(0);
 
   useEffect(() => {
     setCards(getInitialCards(words));
@@ -57,6 +62,11 @@ export default function Home() {
 
   const handleSwipeRight = useCallback((card: WordItem) => {
     saveLearnedId(card.id);
+    rightSwipeCount.current += 1;
+    if (rightSwipeCount.current % 10 === 0) {
+      setToast(getRandomToastContent());
+      setToastId((id) => id + 1);
+    }
     setCards((prev) => prev.filter((c) => c.id !== card.id));
   }, []);
 
@@ -68,12 +78,27 @@ export default function Home() {
 
   return (
     <div className="relative flex min-h-screen flex-col">
+      <div
+        className="fixed left-0 right-0 top-0 z-50 pt-[env(safe-area-inset-top)]"
+      >
+        <AnimatePresence mode="wait">
+          {toast && (
+            <CharacterToast
+              key={toastId}
+              name={toast.name}
+              line1={toast.line1}
+              line2={toast.line2}
+              onComplete={() => setToast(null)}
+            />
+          )}
+        </AnimatePresence>
+      </div>
       <main className="flex flex-1 flex-col items-center pb-28 pt-8">
         <h1
           className="mb-1 flex items-center gap-2 text-2xl font-bold tracking-tight"
           style={{ color: "var(--foreground)" }}
         >
-          <span className="text-2xl" aria-hidden>💕</span>
+          <span className="text-2xl" aria-hidden>💙</span>
           Amor Español
         </h1>
         <p className="mb-5 text-sm text-stone-600">
@@ -123,7 +148,7 @@ export default function Home() {
                 また明日も頑張ろう
               </p>
               {typeof window !== "undefined" && getLearnedIds().length > 0 && (
-                <p className="text-xs text-pink-600/80">
+                <p className="text-xs text-teal-600/80">
                   覚えた単語：{getLearnedIds().length} 語
                 </p>
               )}

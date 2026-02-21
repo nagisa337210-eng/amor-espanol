@@ -12,26 +12,37 @@ const CHAT_STORAGE_PREFIX = "amor-espanol-chat-";
 export type ChatMessage = {
   role: "user" | "model";
   text: string;
-  /** モデル返信時のみ: 文法修正 */
-  correction?: string;
-  /** モデル返信時のみ: 情熱的言い回し提案 */
-  passionate?: string;
+  /** モデル返信時のみ: 評価ブロック全文（Perfecto/Bueno/Correcto/Mal + 言い換え） */
+  evaluation?: string;
   /** モデル返信時のみ: キャラのメッセージ本文 */
   message?: string;
 };
 
 function parseGeminiResponse(text: string): {
-  correction: string;
-  passionate: string;
+  evaluation: string;
   message: string;
 } {
-  const correction =
-    text.match(/【修正】\s*([\s\S]*?)(?=【情熱的】|$)/)?.[1]?.trim() || "";
-  const passionate =
-    text.match(/【情熱的】\s*([\s\S]*?)(?=【メッセージ】|$)/)?.[1]?.trim() || "";
+  const evaluation =
+    text.match(/【評価】\s*([\s\S]*?)(?=【メッセージ】|$)/)?.[1]?.trim() || "";
   const message =
     text.match(/【メッセージ】\s*([\s\S]*?)$/)?.[1]?.trim() || text;
-  return { correction, passionate, message };
+  return { evaluation, message };
+}
+
+/** メッセージを複数バブル用に分割（||| 区切り、なければ改行2つ、なければそのまま1つ） */
+function splitIntoBubbles(message: string): string[] {
+  const trimmed = message.trim();
+  if (!trimmed) return [];
+  if (trimmed.includes("|||")) {
+    return trimmed.split("|||").map((s) => s.trim()).filter(Boolean);
+  }
+  const byDoubleNewline = trimmed.split(/\n\n+/).map((s) => s.trim()).filter(Boolean);
+  if (byDoubleNewline.length > 1) return byDoubleNewline;
+  return [trimmed];
+}
+
+function randomDelay(min = 500, max = 1000): Promise<void> {
+  return new Promise((r) => setTimeout(r, min + Math.random() * (max - min)));
 }
 
 function loadHistory(characterId: CharacterId): ChatMessage[] {
@@ -167,19 +178,22 @@ export default function ChatPage() {
           const response = result.response;
           const fullText = response.text() ?? "";
 
-          const { correction, passionate, message } = parseGeminiResponse(fullText);
+          const { evaluation, message } = parseGeminiResponse(fullText);
+          const bubbles = splitIntoBubbles(message || fullText);
+          const finalMessages: ChatMessage[] = [...newMessages];
 
-          const modelMessage: ChatMessage = {
-            role: "model",
-            text: fullText,
-            correction: correction || undefined,
-            passionate: passionate || undefined,
-            message: message || fullText,
-          };
-
-          const updated = [...newMessages, modelMessage];
-          setMessages(updated);
-          saveHistory(characterId, updated);
+          for (let i = 0; i < bubbles.length; i++) {
+            await randomDelay(500, 1000);
+            const isFirst = i === 0;
+            finalMessages.push({
+              role: "model",
+              text: fullText,
+              evaluation: isFirst && evaluation ? evaluation : undefined,
+              message: bubbles[i],
+            });
+            setMessages([...finalMessages]);
+          }
+          saveHistory(characterId, finalMessages);
           success = true;
           break;
         } catch (err) {
@@ -211,8 +225,8 @@ export default function ChatPage() {
   }, [input, character, characterId, loading, messages]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#ffe4ec] via-[#ffd6b8] to-[#ffecd2]">
-      <header className="sticky top-0 z-10 border-b border-pink-200/50 bg-white/90 backdrop-blur-md">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#e0f7fa] via-[#b2ebf2] to-[#e1f5fe]">
+      <header className="sticky top-0 z-10 border-b border-cyan-200/50 bg-white/90 backdrop-blur-md">
         <div className="flex items-center justify-center gap-1 px-2 py-3">
           {CHARACTERS.map((c) => (
             <button
@@ -227,18 +241,18 @@ export default function ChatPage() {
                     : "transparent",
                 border:
                   characterId === c.id
-                    ? "2px solid rgba(232, 93, 117, 0.6)"
+                    ? "2px solid rgba(0, 121, 107, 0.6)"
                     : "2px solid transparent",
               }}
-              title={`${c.name} (${c.nameJa})`}
+              title={c.name}
             >
               <div
                 className="flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold text-white shadow"
                 style={{
                   background:
                     characterId === c.id
-                      ? "linear-gradient(135deg, #e85d75, #ff9a9e)"
-                      : "linear-gradient(135deg, #b8958a, #d4a5a5)",
+                      ? "linear-gradient(135deg, #00796b, #4dd0e1)"
+                      : "linear-gradient(135deg, #80deea, #b2ebf2)",
                 }}
               >
                 {c.name.slice(0, 1)}
@@ -275,8 +289,8 @@ export default function ChatPage() {
                 <div
                   className="max-w-[80%] rounded-2xl rounded-br-md px-4 py-2.5 shadow-sm"
                   style={{
-                    background: "linear-gradient(135deg, #a8e6cf, #88d4ab)",
-                    color: "#1a4d3a",
+                    background: "linear-gradient(135deg, #b2ebf2, #80deea)",
+                    color: "#0d4d47",
                   }}
                 >
                   <p className="whitespace-pre-wrap break-words text-sm">
@@ -290,51 +304,34 @@ export default function ChatPage() {
                   <div
                     className="rounded-2xl rounded-bl-md bg-white/95 px-4 py-2.5 shadow-sm"
                     style={{
-                      border: "1px solid rgba(255, 182, 193, 0.4)",
+                      border: "1px solid rgba(77, 208, 225, 0.4)",
                     }}
                   >
                     <p className="whitespace-pre-wrap break-words text-sm text-stone-800">
                       {msg.message ?? msg.text}
                     </p>
                   </div>
-                  {(msg.correction || msg.passionate) && (
+                  {msg.evaluation && (
                     <div className="mt-1.5 rounded-xl bg-white/80 px-3 py-2 text-xs">
                       <button
                         type="button"
                         onClick={() =>
                           setExpandedId(expandedId === i ? null : i)
                         }
-                        className="flex w-full items-center gap-1 text-left text-pink-700"
+                        className="flex w-full items-center gap-1 text-left text-teal-700"
                       >
                         {expandedId === i ? (
                           <ChevronUp size={14} />
                         ) : (
                           <ChevronDown size={14} />
                         )}
-                        修正・言い回し
+                        Evaluación
                       </button>
                       {expandedId === i && (
-                        <div className="mt-2 space-y-2 border-t border-pink-100 pt-2">
-                          {msg.correction && (
-                            <div>
-                              <span className="font-medium text-amber-800">
-                                【修正】
-                              </span>
-                              <p className="mt-0.5 text-stone-600">
-                                {msg.correction}
-                              </p>
-                            </div>
-                          )}
-                          {msg.passionate && (
-                            <div>
-                              <span className="font-medium text-rose-700">
-                                【情熱的】
-                              </span>
-                              <p className="mt-0.5 text-stone-600">
-                                {msg.passionate}
-                              </p>
-                            </div>
-                          )}
+                        <div className="mt-2 space-y-2 border-t border-cyan-100 pt-2">
+                          <div className="whitespace-pre-wrap text-stone-600">
+                            {msg.evaluation}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -348,10 +345,10 @@ export default function ChatPage() {
               <div
                 className="rounded-2xl rounded-bl-md bg-white/95 px-4 py-2.5"
                 style={{
-                  border: "1px solid rgba(255, 182, 193, 0.4)",
+                  border: "1px solid rgba(77, 208, 225, 0.4)",
                 }}
               >
-                <span className="text-sm text-stone-400">...</span>
+                <span className="text-sm text-stone-500">Escribiendo…</span>
               </div>
             </div>
           )}
@@ -360,10 +357,9 @@ export default function ChatPage() {
 
       {/* 入力欄：常にタブバーの上に表示 */}
       <div
-        className="fixed left-0 right-0 z-40 border-t border-pink-200/50 bg-white/95 px-3 pt-3 backdrop-blur-md"
+        className="fixed left-0 right-0 z-40 border-t border-cyan-200/50 bg-white/95 px-3 pt-3 pb-2 backdrop-blur-md"
         style={{
-          bottom: "5.5rem",
-          paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))",
+          bottom: "calc(4.125rem + env(safe-area-inset-bottom, 0px))",
         }}
       >
         <div className="mx-auto flex max-w-lg items-end gap-2">
@@ -373,7 +369,7 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
             placeholder="スペイン語でメッセージ..."
-            className="flex-1 rounded-2xl border border-pink-200 bg-pink-50/80 px-4 py-3 text-sm text-stone-800 placeholder:text-stone-400 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+            className="flex-1 rounded-2xl border border-cyan-200 bg-cyan-50/80 px-4 py-3 text-sm text-stone-800 placeholder:text-stone-400 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200"
           />
           <button
             type="button"
@@ -381,7 +377,7 @@ export default function ChatPage() {
             disabled={loading || !input.trim()}
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white shadow transition-opacity disabled:opacity-50"
             style={{
-              background: "linear-gradient(135deg, #e85d75, #ff9a9e)",
+              background: "linear-gradient(135deg, #00796b, #4dd0e1)",
             }}
           >
             <Send size={20} />

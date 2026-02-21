@@ -30,11 +30,9 @@ export function TabBar({
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 flex justify-around border-t border-pink-200/50 bg-white/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
+      className="fixed bottom-0 left-0 right-0 z-50 flex justify-around border-t border-cyan-200/50 bg-white/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
       style={{
-        borderTopLeftRadius: "var(--radius-lg)",
-        borderTopRightRadius: "var(--radius-lg)",
-        boxShadow: "0 -4px 24px rgba(255, 182, 193, 0.18)",
+        boxShadow: "0 -4px 24px rgba(77, 208, 225, 0.15)",
       }}
     >
       {tabs.map(({ id, label, href, icon }) => {
@@ -45,8 +43,7 @@ export function TabBar({
             href={href}
             className="flex flex-1 flex-col items-center gap-1 py-3 transition-all duration-200 active:scale-95"
             style={{
-              borderRadius: "var(--radius-md)",
-              color: isActive ? "#e85d75" : "#b8958a",
+              color: isActive ? "#c9a227" : "#5d9a9a",
             }}
             aria-current={isActive ? "page" : undefined}
             onClick={() => onTabChange?.(id)}

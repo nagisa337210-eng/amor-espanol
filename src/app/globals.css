@@ -1,21 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: linear-gradient(180deg, #ffe4ec 0%, #ffd6b8 50%, #ffecd2 100%);
-  --foreground: #5c3d2e;
-  --pastel-pink: #ffb5c5;
-  --pastel-orange: #ffc9a8;
-  --pastel-cream: #fff0f5;
+  --background: linear-gradient(180deg, #e0f7fa 0%, #b2ebf2 50%, #e1f5fe 100%);
+  --foreground: #1a4d4d;
+  --aqua-light: #b2ebf2;
+  --aqua-mid: #4dd0e1;
+  --cream: #f0fdfa;
   --card-bg: rgba(255, 255, 255, 0.92);
   --radius-sm: 18px;
   --radius-md: 24px;
   --radius-lg: 28px;
   --radius-xl: 36px;
   --radius-full: 9999px;
-  --shadow-soft: 0 10px 40px rgba(255, 150, 150, 0.12);
-  --shadow-card: 0 4px 20px rgba(255, 182, 193, 0.25);
-  --swipe-learned: #a8e6cf;
-  --swipe-yet: #ffccbc;
+  --shadow-soft: 0 10px 40px rgba(77, 208, 225, 0.15);
+  --shadow-card: 0 4px 20px rgba(77, 208, 225, 0.2);
+  --swipe-learned: #80cbc4;
+  --swipe-yet: #ffcc80;
+  --accent-gold: #c9a227;
 }
 
 @theme inline {
@@ -27,7 +28,7 @@
 
 body {
   min-height: 100vh;
-  background: linear-gradient(180deg, #ffe4ec 0%, #ffd6b8 50%, #ffecd2 100%);
+  background: linear-gradient(180deg, #e0f7fa 0%, #b2ebf2 50%, #e1f5fe 100%);
   background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans), "Hiragino Maru Gothic ProN", sans-serif;
