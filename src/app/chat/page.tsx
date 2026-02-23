@@ -175,10 +175,17 @@ function ChatPageContent() {
     };
   }, [characterId]);
 
+  // メッセージ変更時・キャラ切替時に最新まで即スクロール（レイアウト後に実行）
   useEffect(() => {
-    if (!listRef.current) return;
-    listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [messages]);
+    const el = listRef.current;
+    if (!el) return;
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.scrollTop = el.scrollHeight;
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [messages, characterId]);
 
   const sendMessage = useCallback(async () => {
     const trimmed = input.trim();
