@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { TabBar } from "@/components/TabBar";
 import { QuizCard } from "@/components/QuizCard";
+import { CHARACTERS } from "@/data/characters";
+import type { CharacterId } from "@/data/characters";
 import type { WordItem } from "@/types/word";
 import wordsData from "@/data/words.json";
+import { generateMessageWithWords } from "@/lib/quiz-reward";
+import { appendChatMessage } from "@/lib/chat-storage";
+import { setUnread } from "@/lib/unread";
 
 const STORAGE_KEY = "amor-espanol-learned";
 
@@ -50,6 +55,7 @@ export default function Home() {
   const [cards, setCards] = useState<WordItem[]>([]);
   const [isReady, setIsReady] = useState(false);
   const [learnedCount, setLearnedCount] = useState(0);
+  const correctWordsRef = useRef<WordItem[]>([]);
 
   useEffect(() => {
     setCards(getInitialCards(words));
@@ -61,6 +67,27 @@ export default function Home() {
     if (result === "correct") {
       saveLearnedId(card.id);
       setLearnedCount(getLearnedIds().length);
+      correctWordsRef.current = [...correctWordsRef.current, card].slice(-10);
+
+      if (correctWordsRef.current.length === 10) {
+        const batch = correctWordsRef.current;
+        correctWordsRef.current = [];
+        const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+        if (apiKey) {
+          (async () => {
+            try {
+              const selectedWord = batch[Math.floor(Math.random() * batch.length)];
+              const characterId = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)].id as CharacterId;
+              const message = await generateMessageWithWords(apiKey, characterId, [selectedWord]);
+              appendChatMessage(characterId, message);
+              setUnread(characterId);
+            } catch {
+              // 失敗時は何もしない
+            }
+          })();
+        }
+      }
+
       setCards((prev) => prev.slice(1));
     } else {
       setCards((prev) => {
