@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { CHARACTERS, buildSystemPrompt, getCharacter } from "@/data/characters";
@@ -100,7 +100,7 @@ async function getAvailableModelIds(apiKey: string): Promise<string[]> {
   ];
 }
 
-export default function ChatPage() {
+function ChatPageContent() {
   const searchParams = useSearchParams();
   const characterParam = searchParams.get("character");
   const initialId = characterParam && VALID_CHARACTER_IDS.includes(characterParam as CharacterId)
@@ -423,5 +423,22 @@ export default function ChatPage() {
 
       <TabBar />
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#e0f7fa] via-[#b2ebf2] to-[#e1f5fe]">
+          <div className="flex flex-1 items-center justify-center text-stone-500">
+            読み込み中…
+          </div>
+          <TabBar />
+        </div>
+      }
+    >
+      <ChatPageContent />
+    </Suspense>
   );
 }
