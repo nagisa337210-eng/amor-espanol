@@ -91,14 +91,11 @@ export default function Home() {
               appendChatMessage(characterId, message);
               setUnread(characterId);
             } catch {
-              setToast(getRandomToastContent());
-              setToastId((id) => id + 1);
+              // 通知は出さない（チャットの未読バッジのみ）
             }
           })();
-        } else {
-          setToast(getRandomToastContent());
-          setToastId((id) => id + 1);
         }
+        // APIキー未設定時も通知は出さない
       }
 
       setCards((prev) => prev.slice(1));
