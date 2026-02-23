@@ -101,8 +101,11 @@ function loadProfileAvatar(): string | null {
 
 export default function ProfilePage() {
   const [histories, setHistories] = useState<Record<CharacterId, ChatMessage[]> | null>(null);
-  const [scores, setScores] = useState<Record<CharacterId, number | null>>(() =>
-    Object.fromEntries(CHARACTERS.map((c) => [c.id, null as number | null]))
+  const [scores, setScores] = useState<Record<CharacterId, number | null>>(
+    () =>
+      Object.fromEntries(
+        CHARACTERS.map((c) => [c.id, null as number | null])
+      ) as Record<CharacterId, number | null>
   );
   const [loading, setLoading] = useState(true);
   const [profileName, setProfileName] = useState("");
