@@ -1,4 +1,3 @@
-import { CHARACTERS } from "@/data/characters";
 import type { CharacterId } from "@/data/characters";
 
 const CHAT_STORAGE_PREFIX = "amor-espanol-chat-";
@@ -31,13 +30,6 @@ function save(characterId: CharacterId, messages: StoredChatMessage[]): void {
   } catch {
     // ignore
   }
-}
-
-/** やりとりが1件以上あるキャラの id 一覧（報酬メッセージ送信先の候補） */
-export function getCharacterIdsWithHistory(): CharacterId[] {
-  return CHARACTERS.map((c) => c.id).filter(
-    (id) => load(id).length > 0
-  );
 }
 
 /** キャラのチャット履歴の末尾に1件追加する */

@@ -99,7 +99,7 @@ export function QuizCard({ word, allWords, onNext }: QuizCardProps) {
         type="button"
         disabled={answered !== null}
         onClick={handleNotConfident}
-        className="mt-2 rounded-2xl border border-cyan-200/80 bg-white/80 py-2.5 text-sm font-medium text-stone-500 transition-colors hover:bg-cyan-50/80 disabled:pointer-events-none disabled:opacity-60"
+        className="mt-2 rounded-2xl border border-cyan-200/80 bg-white/80 py-2.5 text-sm font-medium text-stone-500 transition-colors transition-transform duration-100 hover:bg-cyan-50/80 active:scale-[0.98] active:opacity-80 disabled:pointer-events-none disabled:opacity-60"
       >
         自信なし
       </button>

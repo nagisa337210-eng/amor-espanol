@@ -7,7 +7,6 @@ import { CHARACTERS, buildSystemPrompt, getCharacter } from "@/data/characters";
 import type { CharacterId } from "@/data/characters";
 import { TabBar } from "@/components/TabBar";
 import { MessageCircle, Send } from "lucide-react";
-import { useUnread } from "@/contexts/UnreadContext";
 
 const VALID_CHARACTER_IDS: CharacterId[] = ["javi", "alejandro", "mateo", "carlos", "diego"];
 
@@ -129,16 +128,12 @@ function ChatPageContent() {
   const listRef = useRef<HTMLDivElement>(null);
 
   const character = getCharacter(characterId);
-  const { unreadIds, markRead } = useUnread();
-  const markReadRef = useRef(markRead);
-  markReadRef.current = markRead;
 
   useEffect(() => {
     const id = characterParam && VALID_CHARACTER_IDS.includes(characterParam as CharacterId)
       ? (characterParam as CharacterId)
       : "javi";
     setCharacterId(id);
-    markReadRef.current(id);
   }, [characterParam]);
 
   useEffect(() => {
@@ -278,11 +273,8 @@ function ChatPageContent() {
             <button
               key={c.id}
               type="button"
-              onClick={() => {
-                setCharacterId(c.id);
-                markRead(c.id);
-              }}
-              className="relative flex flex-col items-center rounded-2xl p-2 transition-all active:scale-95"
+              onClick={() => setCharacterId(c.id)}
+              className="flex flex-col items-center rounded-2xl p-2 transition-all active:scale-95"
               style={{
                 background:
                   characterId === c.id
@@ -296,7 +288,7 @@ function ChatPageContent() {
               title={c.name}
             >
               <div
-                className="relative flex h-12 w-12 shrink-0 overflow-hidden rounded-full text-lg font-bold text-white shadow"
+                className="flex h-12 w-12 shrink-0 overflow-hidden rounded-full text-lg font-bold text-white shadow"
                 style={{
                   background:
                     c.id === "javi" ||
@@ -347,12 +339,6 @@ function ChatPageContent() {
                   />
                 ) : (
                   c.name.slice(0, 1)
-                )}
-                {unreadIds.includes(c.id) && (
-                  <span
-                    className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-white bg-red-500"
-                    aria-label="未読"
-                  />
                 )}
               </div>
               <span className="mt-1 text-xs font-medium text-stone-600">

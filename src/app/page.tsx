@@ -1,15 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
-import { AnimatePresence } from "framer-motion";
+import { useState, useCallback, useEffect } from "react";
 import { TabBar } from "@/components/TabBar";
 import { QuizCard } from "@/components/QuizCard";
-import { CharacterToast, getRandomToastContent } from "@/components/CharacterToast";
-import { generateMessageWithWords } from "@/lib/quiz-reward";
-import { appendChatMessage, getCharacterIdsWithHistory } from "@/lib/chat-storage";
-import { CHARACTERS } from "@/data/characters";
-import type { CharacterId } from "@/data/characters";
-import { setUnread } from "@/lib/unread";
 import type { WordItem } from "@/types/word";
 import wordsData from "@/data/words.json";
 
@@ -56,12 +49,6 @@ const words = wordsData as WordItem[];
 export default function Home() {
   const [cards, setCards] = useState<WordItem[]>([]);
   const [isReady, setIsReady] = useState(false);
-  const [toast, setToast] = useState<ReturnType<typeof getRandomToastContent> | null>(null);
-  const [toastId, setToastId] = useState(0);
-  const correctCount = useRef(0);
-  const correctWordsBatch = useRef<WordItem[]>([]);
-
-  /** 進捗表示用：localStorage の「覚えた」数（タブ切り替え後も保持） */
   const [learnedCount, setLearnedCount] = useState(0);
 
   useEffect(() => {
@@ -74,30 +61,6 @@ export default function Home() {
     if (result === "correct") {
       saveLearnedId(card.id);
       setLearnedCount(getLearnedIds().length);
-      correctCount.current += 1;
-      correctWordsBatch.current.push(card);
-
-      if (correctWordsBatch.current.length === 10) {
-        const batch = [...correctWordsBatch.current];
-        correctWordsBatch.current = [];
-        const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-        if (apiKey) {
-          (async () => {
-            try {
-              const withHistory = getCharacterIdsWithHistory();
-              const candidates = withHistory.length > 0 ? withHistory : (CHARACTERS.map((c) => c.id) as CharacterId[]);
-              const characterId = candidates[Math.floor(Math.random() * candidates.length)];
-              const message = await generateMessageWithWords(apiKey, characterId, batch);
-              appendChatMessage(characterId, message);
-              setUnread(characterId);
-            } catch {
-              // 通知は出さない（チャットの未読バッジのみ）
-            }
-          })();
-        }
-        // APIキー未設定時も通知は出さない
-      }
-
       setCards((prev) => prev.slice(1));
     } else {
       setCards((prev) => {
@@ -114,21 +77,6 @@ export default function Home() {
 
   return (
     <div className="relative flex min-h-screen flex-col">
-      <div
-        className="fixed left-0 right-0 top-0 z-50 pt-[env(safe-area-inset-top)]"
-      >
-        <AnimatePresence mode="wait">
-          {toast ? (
-            <CharacterToast
-              key={toastId}
-              name={toast.name}
-              line1={toast.line1}
-              line2={toast.line2}
-              onComplete={() => setToast(null)}
-            />
-          ) : null}
-        </AnimatePresence>
-      </div>
       <main className="flex flex-1 flex-col items-center pb-28 pt-8">
         <p className="mb-3 mt-2 text-center text-sm font-medium text-teal-700">
           {progressCurrent} / {progressTotal}
