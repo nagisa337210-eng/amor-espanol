@@ -247,15 +247,26 @@ export default function ChatPage() {
               title={c.name}
             >
               <div
-                className="flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold text-white shadow"
+                className="flex h-12 w-12 shrink-0 overflow-hidden rounded-full text-lg font-bold text-white shadow"
                 style={{
                   background:
-                    characterId === c.id
-                      ? "linear-gradient(135deg, #00796b, #4dd0e1)"
-                      : "linear-gradient(135deg, #80deea, #b2ebf2)",
+                    c.id === "carlos"
+                      ? "transparent"
+                      : characterId === c.id
+                        ? "linear-gradient(135deg, #00796b, #4dd0e1)"
+                        : "linear-gradient(135deg, #80deea, #b2ebf2)",
                 }}
               >
-                {c.name.slice(0, 1)}
+                {c.id === "carlos" ? (
+                  <img
+                    src="/images/carlos.png"
+                    alt={c.name}
+                    className="h-full w-full object-cover"
+                    style={{ objectPosition: "50% 20%" }}
+                  />
+                ) : (
+                  c.name.slice(0, 1)
+                )}
               </div>
               <span className="mt-1 text-xs font-medium text-stone-600">
                 {c.nameJa}
@@ -270,7 +281,7 @@ export default function ChatPage() {
         )}
       </header>
 
-      <main className="flex-1 overflow-hidden px-3 pb-32 pt-4">
+      <main className="flex-1 overflow-hidden px-3 pb-40 pt-4">
         <div
           ref={listRef}
           className="flex h-full flex-col gap-3 overflow-y-auto"

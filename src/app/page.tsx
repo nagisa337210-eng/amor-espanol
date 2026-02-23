@@ -102,7 +102,7 @@ export default function Home() {
           Amor Español
         </h1>
         <p className="mb-5 text-sm text-stone-600">
-          右：覚えた　／　左：まだ
+          Izq: Aún no / Der: Ya
         </p>
 
         <section className="relative h-[320px] w-full max-w-sm px-0">
@@ -122,7 +122,7 @@ export default function Home() {
           ) : currentCard ? (
             <>
               <p className="mb-2 text-center text-xs text-stone-500">
-                残り {cards.length} 枚
+                Quedan {cards.length} tarjetas
               </p>
               <SwipeCard
                 key={currentCard.id}
