@@ -45,6 +45,8 @@ export async function generateMessageWithWords(
   characterId: CharacterId,
   words: WordItem[]
 ): Promise<string> {
+  await new Promise((r) => setTimeout(r, 3000));
+
   const char = getCharacter(characterId);
   const wordList = words.map((w) => w.spanish).join(", ");
   const prompt = `${char?.systemPrompt ?? ""}

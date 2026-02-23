@@ -11,6 +11,20 @@ import { generateMessageWithWords } from "@/lib/quiz-reward";
 import { appendChatMessage } from "@/lib/chat-storage";
 import { setUnread } from "@/lib/unread";
 
+/** API失敗時の固定メッセージ（10回正解フォールバック用） */
+const FALLBACK_MESSAGES = [
+  "Oye, ¿cómo va todo?",
+  "Pensé en ti hoy 😊",
+  "¿Qué tal tu día?",
+  "¡Hola! ¿Qué cuentas?",
+  "Me acordé de ti",
+  "¿Cómo estás?",
+  "Ey, ¿qué tal?",
+  "Qué gusto escribirte 😄",
+  "¿Qué has hecho hoy?",
+  "Oye, cuando quieras hablamos",
+];
+
 const STORAGE_KEY = "amor-espanol-learned";
 
 /** localStorage に保存された「覚えた」単語の id 一覧を取得 */
@@ -75,15 +89,17 @@ export default function Home() {
         const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
         if (apiKey) {
           (async () => {
+            const selectedWord = batch[Math.floor(Math.random() * batch.length)];
+            const characterId = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)].id as CharacterId;
+            let message: string;
             try {
-              const selectedWord = batch[Math.floor(Math.random() * batch.length)];
-              const characterId = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)].id as CharacterId;
-              const message = await generateMessageWithWords(apiKey, characterId, [selectedWord]);
-              appendChatMessage(characterId, message);
-              setUnread(characterId);
+              message = await generateMessageWithWords(apiKey, characterId, [selectedWord]);
             } catch {
-              // 失敗時は何もしない
+              message =
+                FALLBACK_MESSAGES[Math.floor(Math.random() * FALLBACK_MESSAGES.length)];
             }
+            appendChatMessage(characterId, message);
+            setUnread(characterId);
           })();
         }
       }
