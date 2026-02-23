@@ -125,7 +125,7 @@ export default function Home() {
           {progressCurrent} / {progressTotal}
         </p>
 
-        <section className="relative w-full max-w-sm px-0">
+        <section className="relative w-full max-w-sm px-4">
           {!isReady ? (
             <div
               className="flex flex-col items-center justify-center gap-3 rounded-[28px] p-8 text-center"

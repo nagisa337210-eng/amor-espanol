@@ -360,7 +360,7 @@ function ChatPageContent() {
                 )}
                 {unreadIds.includes(c.id) && (
                   <span
-                    className="absolute right-0 top-0 h-2 w-2 rounded-full border-2 border-white bg-red-500"
+                    className="absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-red-500"
                     aria-label="未読"
                   />
                 )}
