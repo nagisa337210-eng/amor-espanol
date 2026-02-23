@@ -1,32 +1,28 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { CHARACTERS, buildSystemPrompt, getCharacter } from "@/data/characters";
 import type { CharacterId } from "@/data/characters";
 import { TabBar } from "@/components/TabBar";
-import { MessageCircle, Send, ChevronDown, ChevronUp } from "lucide-react";
+import { MessageCircle, Send } from "lucide-react";
+
+const VALID_CHARACTER_IDS: CharacterId[] = ["javi", "alejandro", "mateo", "carlos", "diego"];
 
 const CHAT_STORAGE_PREFIX = "amor-espanol-chat-";
 
 export type ChatMessage = {
   role: "user" | "model";
   text: string;
-  /** モデル返信時のみ: 評価ブロック全文（Perfecto/Bueno/Correcto/Mal + 言い換え） */
-  evaluation?: string;
   /** モデル返信時のみ: キャラのメッセージ本文 */
   message?: string;
 };
 
-function parseGeminiResponse(text: string): {
-  evaluation: string;
-  message: string;
-} {
-  const evaluation =
-    text.match(/【評価】\s*([\s\S]*?)(?=【メッセージ】|$)/)?.[1]?.trim() || "";
+function parseGeminiResponse(text: string): { message: string } {
   const message =
-    text.match(/【メッセージ】\s*([\s\S]*?)$/)?.[1]?.trim() || text;
-  return { evaluation, message };
+    text.match(/【メッセージ】\s*([\s\S]*?)$/)?.[1]?.trim() || text.trim();
+  return { message };
 }
 
 /** メッセージを複数バブル用に分割（||| 区切り、なければ改行2つ、なければそのまま1つ） */
@@ -105,18 +101,39 @@ async function getAvailableModelIds(apiKey: string): Promise<string[]> {
 }
 
 export default function ChatPage() {
-  const [characterId, setCharacterId] = useState<CharacterId>("javi");
+  const searchParams = useSearchParams();
+  const characterParam = searchParams.get("character");
+  const initialId = characterParam && VALID_CHARACTER_IDS.includes(characterParam as CharacterId)
+    ? (characterParam as CharacterId)
+    : "javi";
+
+  const [characterId, setCharacterId] = useState<CharacterId>(initialId);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   const character = getCharacter(characterId);
 
   useEffect(() => {
+    const id = characterParam && VALID_CHARACTER_IDS.includes(characterParam as CharacterId)
+      ? (characterParam as CharacterId)
+      : "javi";
+    setCharacterId(id);
+  }, [characterParam]);
+
+  useEffect(() => {
     setMessages(loadHistory(characterId));
   }, [characterId]);
+
+  // ?character= で開いたときは最新の履歴を確実に読む（クイズ報酬メッセージなど）
+  useEffect(() => {
+    if (!characterParam) return;
+    const id = VALID_CHARACTER_IDS.includes(characterParam as CharacterId)
+      ? (characterParam as CharacterId)
+      : null;
+    if (id) setMessages(loadHistory(id));
+  }, [characterParam]);
 
   useEffect(() => {
     listRef.current?.scrollTo({
@@ -178,17 +195,15 @@ export default function ChatPage() {
           const response = result.response;
           const fullText = response.text() ?? "";
 
-          const { evaluation, message } = parseGeminiResponse(fullText);
+          const { message } = parseGeminiResponse(fullText);
           const bubbles = splitIntoBubbles(message || fullText);
           const finalMessages: ChatMessage[] = [...newMessages];
 
           for (let i = 0; i < bubbles.length; i++) {
             await randomDelay(500, 1000);
-            const isFirst = i === 0;
             finalMessages.push({
               role: "model",
               text: fullText,
-              evaluation: isFirst && evaluation ? evaluation : undefined,
               message: bubbles[i],
             });
             setMessages([...finalMessages]);
@@ -250,19 +265,54 @@ export default function ChatPage() {
                 className="flex h-12 w-12 shrink-0 overflow-hidden rounded-full text-lg font-bold text-white shadow"
                 style={{
                   background:
-                    c.id === "carlos"
+                    c.id === "javi" ||
+                    c.id === "carlos" ||
+                    c.id === "alejandro" ||
+                    c.id === "diego" ||
+                    c.id === "mateo"
                       ? "transparent"
                       : characterId === c.id
                         ? "linear-gradient(135deg, #00796b, #4dd0e1)"
                         : "linear-gradient(135deg, #80deea, #b2ebf2)",
                 }}
               >
-                {c.id === "carlos" ? (
+                {c.id === "javi" ? (
+                  <img
+                    src="/images/javi.png?v=2"
+                    alt={c.name}
+                    className="h-full w-full object-cover"
+                    style={{
+                      objectPosition: "50% 50%",
+                      transform: "scale(1.5)",
+                    }}
+                  />
+                ) : c.id === "carlos" ? (
                   <img
                     src="/images/carlos.png"
                     alt={c.name}
                     className="h-full w-full object-cover"
                     style={{ objectPosition: "50% 20%" }}
+                  />
+                ) : c.id === "alejandro" ? (
+                  <img
+                    src="/images/alejandro.png"
+                    alt={c.name}
+                    className="h-full w-full object-cover"
+                    style={{ objectPosition: "50% 25%" }}
+                  />
+                ) : c.id === "diego" ? (
+                  <img
+                    src="/images/diego.png"
+                    alt={c.name}
+                    className="h-full w-full object-cover"
+                    style={{ objectPosition: "50% 25%" }}
+                  />
+                ) : c.id === "mateo" ? (
+                  <img
+                    src="/images/mateo.png"
+                    alt={c.name}
+                    className="h-full w-full object-cover"
+                    style={{ objectPosition: "50% 5%" }}
                   />
                 ) : (
                   c.name.slice(0, 1)
@@ -322,31 +372,6 @@ export default function ChatPage() {
                       {msg.message ?? msg.text}
                     </p>
                   </div>
-                  {msg.evaluation && (
-                    <div className="mt-1.5 rounded-xl bg-white/80 px-3 py-2 text-xs">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedId(expandedId === i ? null : i)
-                        }
-                        className="flex w-full items-center gap-1 text-left text-teal-700"
-                      >
-                        {expandedId === i ? (
-                          <ChevronUp size={14} />
-                        ) : (
-                          <ChevronDown size={14} />
-                        )}
-                        Evaluación
-                      </button>
-                      {expandedId === i && (
-                        <div className="mt-2 space-y-2 border-t border-cyan-100 pt-2">
-                          <div className="whitespace-pre-wrap text-stone-600">
-                            {msg.evaluation}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             )

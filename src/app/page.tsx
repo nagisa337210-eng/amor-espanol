@@ -3,8 +3,13 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import { TabBar } from "@/components/TabBar";
-import { SwipeCard } from "@/components/SwipeCard";
+import { QuizCard } from "@/components/QuizCard";
 import { CharacterToast, getRandomToastContent } from "@/components/CharacterToast";
+import { CharacterMessageToast } from "@/components/CharacterMessageToast";
+import { selectCharacterForWords, generateMessageWithWords } from "@/lib/quiz-reward";
+import { appendChatMessage } from "@/lib/chat-storage";
+import { getCharacter } from "@/data/characters";
+import type { CharacterId } from "@/data/characters";
 import type { WordItem } from "@/types/word";
 import wordsData from "@/data/words.json";
 
@@ -38,7 +43,7 @@ function shuffle<T>(array: T[]): T[] {
   return arr;
 }
 
-/** 未学習の単語だけをシャッフルして初期カードを生成 */
+/** 未学習の単語だけをシャッフルしてクイズ用リストを生成 */
 function getInitialCards(allWords: WordItem[]): WordItem[] {
   if (typeof window === "undefined") return [];
   const learned = getLearnedIds();
@@ -53,28 +58,71 @@ export default function Home() {
   const [isReady, setIsReady] = useState(false);
   const [toast, setToast] = useState<ReturnType<typeof getRandomToastContent> | null>(null);
   const [toastId, setToastId] = useState(0);
-  const rightSwipeCount = useRef(0);
+  const correctCount = useRef(0);
+  const correctWordsBatch = useRef<WordItem[]>([]);
+
+  const [rewardNotification, setRewardNotification] = useState<{
+    characterId: CharacterId;
+    characterName: string;
+    messagePreview: string;
+  } | null>(null);
+
+  /** 進捗表示用：localStorage の「覚えた」数（タブ切り替え後も保持） */
+  const [learnedCount, setLearnedCount] = useState(0);
 
   useEffect(() => {
     setCards(getInitialCards(words));
+    setLearnedCount(getLearnedIds().length);
     setIsReady(true);
   }, []);
 
-  const handleSwipeRight = useCallback((card: WordItem) => {
-    saveLearnedId(card.id);
-    rightSwipeCount.current += 1;
-    if (rightSwipeCount.current % 10 === 0) {
-      setToast(getRandomToastContent());
-      setToastId((id) => id + 1);
-    }
-    setCards((prev) => prev.filter((c) => c.id !== card.id));
-  }, []);
+  const handleNext = useCallback((result: "correct" | "wrong" | "not-confident", card: WordItem) => {
+    if (result === "correct") {
+      saveLearnedId(card.id);
+      setLearnedCount(getLearnedIds().length);
+      correctCount.current += 1;
+      correctWordsBatch.current.push(card);
 
-  const handleSwipeLeft = useCallback((card: WordItem) => {
-    setCards((prev) => prev.filter((c) => c.id !== card.id));
+      if (correctWordsBatch.current.length === 10) {
+        const batch = [...correctWordsBatch.current];
+        correctWordsBatch.current = [];
+        const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+        if (apiKey) {
+          (async () => {
+            try {
+              const characterId = await selectCharacterForWords(apiKey, batch);
+              const message = await generateMessageWithWords(apiKey, characterId, batch);
+              appendChatMessage(characterId, message);
+              const char = getCharacter(characterId);
+              setRewardNotification({
+                characterId,
+                characterName: char?.name ?? characterId,
+                messagePreview: message,
+              });
+            } catch {
+              setToast(getRandomToastContent());
+              setToastId((id) => id + 1);
+            }
+          })();
+        } else {
+          setToast(getRandomToastContent());
+          setToastId((id) => id + 1);
+        }
+      }
+
+      setCards((prev) => prev.slice(1));
+    } else {
+      setCards((prev) => {
+        const rest = prev.slice(1);
+        const pos = Math.floor(Math.random() * (rest.length + 1));
+        return [...rest.slice(0, pos), card, ...rest.slice(pos)];
+      });
+    }
   }, []);
 
   const currentCard = cards[0];
+  const progressTotal = words.length;
+  const progressCurrent = learnedCount;
 
   return (
     <div className="relative flex min-h-screen flex-col">
@@ -82,7 +130,15 @@ export default function Home() {
         className="fixed left-0 right-0 top-0 z-50 pt-[env(safe-area-inset-top)]"
       >
         <AnimatePresence mode="wait">
-          {toast && (
+          {rewardNotification ? (
+            <CharacterMessageToast
+              key="reward"
+              characterName={rewardNotification.characterName}
+              messagePreview={rewardNotification.messagePreview}
+              characterId={rewardNotification.characterId}
+              onDismiss={() => setRewardNotification(null)}
+            />
+          ) : toast ? (
             <CharacterToast
               key={toastId}
               name={toast.name}
@@ -90,22 +146,15 @@ export default function Home() {
               line2={toast.line2}
               onComplete={() => setToast(null)}
             />
-          )}
+          ) : null}
         </AnimatePresence>
       </div>
       <main className="flex flex-1 flex-col items-center pb-28 pt-8">
-        <h1
-          className="mb-1 flex items-center gap-2 text-2xl font-bold tracking-tight"
-          style={{ color: "var(--foreground)" }}
-        >
-          <span className="text-2xl" aria-hidden>💙</span>
-          Amor Español
-        </h1>
-        <p className="mb-5 text-sm text-stone-600">
-          Izq: Aún no / Der: Ya
+        <p className="mb-3 mt-2 text-center text-sm font-medium text-teal-700">
+          {progressCurrent} / {progressTotal}
         </p>
 
-        <section className="relative h-[320px] w-full max-w-sm px-0">
+        <section className="relative w-full max-w-sm px-0">
           {!isReady ? (
             <div
               className="flex flex-col items-center justify-center gap-3 rounded-[28px] p-8 text-center"
@@ -120,17 +169,12 @@ export default function Home() {
               </p>
             </div>
           ) : currentCard ? (
-            <>
-              <p className="mb-2 text-center text-xs text-stone-500">
-                Quedan {cards.length} tarjetas
-              </p>
-              <SwipeCard
-                key={currentCard.id}
-                card={currentCard}
-                onSwipeLeft={handleSwipeLeft}
-                onSwipeRight={handleSwipeRight}
-              />
-            </>
+            <QuizCard
+              key={currentCard.id}
+              word={currentCard}
+              allWords={words}
+              onNext={(result) => handleNext(result, currentCard)}
+            />
           ) : (
             <div
               className="flex flex-col items-center justify-center gap-4 rounded-[28px] p-8 text-center"
