@@ -176,10 +176,8 @@ function ChatPageContent() {
   }, [characterId]);
 
   useEffect(() => {
-    listRef.current?.scrollTo({
-      top: listRef.current.scrollHeight,
-      behavior: "smooth",
-    });
+    if (!listRef.current) return;
+    listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [messages]);
 
   const sendMessage = useCallback(async () => {
@@ -219,7 +217,8 @@ function ChatPageContent() {
         .map((m) => ({
           role: m.role === "user" ? "user" : "model",
           parts: [{ text: m.role === "user" ? m.text : (m.message ?? m.text) }],
-        }));
+        }))
+        .filter((_, i, arr) => !(i === 0 && arr[0].role === "model")); // 先頭がmodelなら除外
 
       let lastError: unknown;
       let success = false;
