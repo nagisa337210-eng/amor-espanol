@@ -5,11 +5,11 @@ import { AnimatePresence } from "framer-motion";
 import { TabBar } from "@/components/TabBar";
 import { QuizCard } from "@/components/QuizCard";
 import { CharacterToast, getRandomToastContent } from "@/components/CharacterToast";
-import { CharacterMessageToast } from "@/components/CharacterMessageToast";
-import { selectCharacterForWords, generateMessageWithWords } from "@/lib/quiz-reward";
-import { appendChatMessage } from "@/lib/chat-storage";
-import { getCharacter } from "@/data/characters";
+import { generateMessageWithWords } from "@/lib/quiz-reward";
+import { appendChatMessage, getCharacterIdsWithHistory } from "@/lib/chat-storage";
+import { CHARACTERS } from "@/data/characters";
 import type { CharacterId } from "@/data/characters";
+import { setUnread } from "@/lib/unread";
 import type { WordItem } from "@/types/word";
 import wordsData from "@/data/words.json";
 
@@ -61,12 +61,6 @@ export default function Home() {
   const correctCount = useRef(0);
   const correctWordsBatch = useRef<WordItem[]>([]);
 
-  const [rewardNotification, setRewardNotification] = useState<{
-    characterId: CharacterId;
-    characterName: string;
-    messagePreview: string;
-  } | null>(null);
-
   /** 進捗表示用：localStorage の「覚えた」数（タブ切り替え後も保持） */
   const [learnedCount, setLearnedCount] = useState(0);
 
@@ -90,15 +84,12 @@ export default function Home() {
         if (apiKey) {
           (async () => {
             try {
-              const characterId = await selectCharacterForWords(apiKey, batch);
+              const withHistory = getCharacterIdsWithHistory();
+              const candidates = withHistory.length > 0 ? withHistory : (CHARACTERS.map((c) => c.id) as CharacterId[]);
+              const characterId = candidates[Math.floor(Math.random() * candidates.length)];
               const message = await generateMessageWithWords(apiKey, characterId, batch);
               appendChatMessage(characterId, message);
-              const char = getCharacter(characterId);
-              setRewardNotification({
-                characterId,
-                characterName: char?.name ?? characterId,
-                messagePreview: message,
-              });
+              setUnread(characterId);
             } catch {
               setToast(getRandomToastContent());
               setToastId((id) => id + 1);
@@ -130,15 +121,7 @@ export default function Home() {
         className="fixed left-0 right-0 top-0 z-50 pt-[env(safe-area-inset-top)]"
       >
         <AnimatePresence mode="wait">
-          {rewardNotification ? (
-            <CharacterMessageToast
-              key="reward"
-              characterName={rewardNotification.characterName}
-              messagePreview={rewardNotification.messagePreview}
-              characterId={rewardNotification.characterId}
-              onDismiss={() => setRewardNotification(null)}
-            />
-          ) : toast ? (
+          {toast ? (
             <CharacterToast
               key={toastId}
               name={toast.name}

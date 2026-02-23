@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { UnreadProvider } from "@/contexts/UnreadContext";
 
 export const metadata: Metadata = {
   title: "Amor Español",
@@ -14,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className="antialiased">
-        {children}
+        <UnreadProvider>{children}</UnreadProvider>
       </body>
     </html>
   );

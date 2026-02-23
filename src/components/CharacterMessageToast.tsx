@@ -24,7 +24,7 @@ export function CharacterMessageToast({
       : messagePreview;
 
   useEffect(() => {
-    const t = setTimeout(onDismiss, 5000);
+    const t = setTimeout(onDismiss, 10000);
     return () => clearTimeout(t);
   }, [onDismiss]);
 

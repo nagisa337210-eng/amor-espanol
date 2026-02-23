@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookOpen, MessageCircle, User } from "lucide-react";
+import { useUnread } from "@/contexts/UnreadContext";
 
 export type TabId = "swipe" | "chat" | "profile";
 
@@ -27,6 +28,7 @@ export function TabBar({
 } = {}) {
   const pathname = usePathname();
   const activeTab = activeTabOverride ?? getActiveTab(pathname ?? "/");
+  const { hasAnyUnread } = useUnread();
 
   return (
     <nav
@@ -37,19 +39,26 @@ export function TabBar({
     >
       {tabs.map(({ id, label, href, icon }) => {
         const isActive = activeTab === id;
+        const showUnreadBadge = id === "chat" && hasAnyUnread;
         return (
           <Link
             key={id}
             href={href}
-            className="flex flex-1 flex-col items-center gap-1 py-3 transition-all duration-200 active:scale-95"
+            className="relative flex flex-1 flex-col items-center gap-1 py-3 transition-all duration-200 active:scale-95"
             style={{
               color: isActive ? "#c9a227" : "#5d9a9a",
             }}
             aria-current={isActive ? "page" : undefined}
             onClick={() => onTabChange?.(id)}
           >
-            <span className={isActive ? "opacity-100 drop-shadow-sm" : "opacity-70"}>
+            <span className={`relative ${isActive ? "opacity-100 drop-shadow-sm" : "opacity-70"}`}>
               {icon}
+              {showUnreadBadge && (
+                <span
+                  className="absolute -right-1.5 -top-1 h-2.5 w-2.5 rounded-full bg-red-500"
+                  aria-label="未読あり"
+                />
+              )}
             </span>
             <span className="text-xs font-medium">{label}</span>
           </Link>

@@ -7,6 +7,7 @@ import { CHARACTERS, buildSystemPrompt, getCharacter } from "@/data/characters";
 import type { CharacterId } from "@/data/characters";
 import { TabBar } from "@/components/TabBar";
 import { MessageCircle, Send } from "lucide-react";
+import { useUnread } from "@/contexts/UnreadContext";
 
 const VALID_CHARACTER_IDS: CharacterId[] = ["javi", "alejandro", "mateo", "carlos", "diego"];
 
@@ -17,12 +18,26 @@ export type ChatMessage = {
   text: string;
   /** モデル返信時のみ: キャラのメッセージ本文 */
   message?: string;
+  /** 投稿日時（ms）。表示用 mm/dd 時:分 */
+  createdAt?: number;
 };
 
+/** 投稿日時を mm/dd HH:mm で表示 */
+function formatMessageTime(ms: number): string {
+  const d = new Date(ms);
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${m}/${day} ${h}:${min}`;
+}
+
 function parseGeminiResponse(text: string): { message: string } {
-  const message =
-    text.match(/【メッセージ】\s*([\s\S]*?)$/)?.[1]?.trim() || text.trim();
-  return { message };
+  // 【メッセージ】や【mensaje】は表示しない：除去して本文だけ返す
+  const message = text
+    .replace(/【(?:メッセージ|mensaje)】\s*/gi, "")
+    .trim();
+  return { message: message || text.trim() };
 }
 
 /** メッセージを複数バブル用に分割（||| 区切り、なければ改行2つ、なければそのまま1つ） */
@@ -114,12 +129,16 @@ function ChatPageContent() {
   const listRef = useRef<HTMLDivElement>(null);
 
   const character = getCharacter(characterId);
+  const { unreadIds, markRead } = useUnread();
+  const markReadRef = useRef(markRead);
+  markReadRef.current = markRead;
 
   useEffect(() => {
     const id = characterParam && VALID_CHARACTER_IDS.includes(characterParam as CharacterId)
       ? (characterParam as CharacterId)
       : "javi";
     setCharacterId(id);
+    markReadRef.current(id);
   }, [characterParam]);
 
   useEffect(() => {
@@ -134,6 +153,17 @@ function ChatPageContent() {
       : null;
     if (id) setMessages(loadHistory(id));
   }, [characterParam]);
+
+  // タブに戻ったとき・通知から開いたときも localStorage から再読み込み（クイズ報酬を確実に表示）
+  useEffect(() => {
+    const reload = () => setMessages(loadHistory(characterId));
+    document.addEventListener("visibilitychange", reload);
+    window.addEventListener("pageshow", reload); // 通知タップで同じURLに遷移したときも再読込
+    return () => {
+      document.removeEventListener("visibilitychange", reload);
+      window.removeEventListener("pageshow", reload);
+    };
+  }, [characterId]);
 
   useEffect(() => {
     listRef.current?.scrollTo({
@@ -150,18 +180,19 @@ function ChatPageContent() {
     if (!apiKey) {
       setMessages((prev) => [
         ...prev,
-        { role: "user", text: trimmed },
+        { role: "user", text: trimmed, createdAt: Date.now() },
         {
           role: "model",
           text: "APIキーが設定されていません。.env.local を確認してください。",
           message: "APIキーが設定されていません。",
+          createdAt: Date.now(),
         },
       ]);
       setInput("");
       return;
     }
 
-    const userMessage: ChatMessage = { role: "user", text: trimmed };
+    const userMessage: ChatMessage = { role: "user", text: trimmed, createdAt: Date.now() };
     const newMessages: ChatMessage[] = [...messages, userMessage];
     setMessages(newMessages);
     setInput("");
@@ -205,6 +236,7 @@ function ChatPageContent() {
               role: "model",
               text: fullText,
               message: bubbles[i],
+              createdAt: Date.now(),
             });
             setMessages([...finalMessages]);
           }
@@ -225,15 +257,14 @@ function ChatPageContent() {
       const errorText = isInvalidKey
         ? "APIキーが無効です。.env.local の NEXT_PUBLIC_GEMINI_API_KEY を、Google AI Studio (aistudio.google.com) で発行した新しいキーに置き換えて、アプリを再起動してください。"
         : rawMessage || "エラーが発生しました";
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "model",
-          text: errorText,
-          message: errorText,
-        },
-      ]);
-      saveHistory(characterId, [...newMessages, { role: "model", text: errorText, message: errorText }]);
+      const errMsg: ChatMessage = {
+        role: "model",
+        text: errorText,
+        message: errorText,
+        createdAt: Date.now(),
+      };
+      setMessages((prev) => [...prev, errMsg]);
+      saveHistory(characterId, [...newMessages, errMsg]);
     } finally {
       setLoading(false);
     }
@@ -247,8 +278,11 @@ function ChatPageContent() {
             <button
               key={c.id}
               type="button"
-              onClick={() => setCharacterId(c.id)}
-              className="flex flex-col items-center rounded-2xl p-2 transition-all active:scale-95"
+              onClick={() => {
+                setCharacterId(c.id);
+                markRead(c.id);
+              }}
+              className="relative flex flex-col items-center rounded-2xl p-2 transition-all active:scale-95"
               style={{
                 background:
                   characterId === c.id
@@ -262,7 +296,7 @@ function ChatPageContent() {
               title={c.name}
             >
               <div
-                className="flex h-12 w-12 shrink-0 overflow-hidden rounded-full text-lg font-bold text-white shadow"
+                className="relative flex h-12 w-12 shrink-0 overflow-hidden rounded-full text-lg font-bold text-white shadow"
                 style={{
                   background:
                     c.id === "javi" ||
@@ -281,10 +315,7 @@ function ChatPageContent() {
                     src="/images/javi.png?v=2"
                     alt={c.name}
                     className="h-full w-full object-cover"
-                    style={{
-                      objectPosition: "50% 50%",
-                      transform: "scale(1.5)",
-                    }}
+                    style={{ objectPosition: "50% 25%" }}
                   />
                 ) : c.id === "carlos" ? (
                   <img
@@ -317,6 +348,12 @@ function ChatPageContent() {
                 ) : (
                   c.name.slice(0, 1)
                 )}
+                {unreadIds.includes(c.id) && (
+                  <span
+                    className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-white bg-red-500"
+                    aria-label="未読"
+                  />
+                )}
               </div>
               <span className="mt-1 text-xs font-medium text-stone-600">
                 {c.nameJa}
@@ -346,7 +383,7 @@ function ChatPageContent() {
           )}
           {messages.map((msg, i) =>
             msg.role === "user" ? (
-              <div key={i} className="flex justify-end">
+              <div key={i} className="flex flex-col items-end">
                 <div
                   className="max-w-[80%] rounded-2xl rounded-br-md px-4 py-2.5 shadow-sm"
                   style={{
@@ -358,9 +395,14 @@ function ChatPageContent() {
                     {msg.text}
                   </p>
                 </div>
+                {msg.createdAt != null && (
+                  <span className="mt-0.5 text-xs text-stone-500">
+                    {formatMessageTime(msg.createdAt)}
+                  </span>
+                )}
               </div>
             ) : (
-              <div key={i} className="flex justify-start">
+              <div key={i} className="flex flex-col items-start">
                 <div className="max-w-[85%]">
                   <div
                     className="rounded-2xl rounded-bl-md bg-white/95 px-4 py-2.5 shadow-sm"
@@ -373,6 +415,11 @@ function ChatPageContent() {
                     </p>
                   </div>
                 </div>
+                {msg.createdAt != null && (
+                  <span className="mt-0.5 text-xs text-stone-500">
+                    {formatMessageTime(msg.createdAt)}
+                  </span>
+                )}
               </div>
             )
           )}
@@ -405,7 +452,8 @@ function ChatPageContent() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
             placeholder="スペイン語でメッセージ..."
-            className="flex-1 rounded-2xl border border-cyan-200 bg-cyan-50/80 px-4 py-3 text-sm text-stone-800 placeholder:text-stone-400 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+            className="flex-1 rounded-2xl border border-cyan-200 bg-cyan-50/80 px-4 py-3 text-stone-800 placeholder:text-stone-400 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+style={{ fontSize: "16px" }}
           />
           <button
             type="button"

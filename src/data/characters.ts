@@ -83,7 +83,7 @@ export function buildSystemPrompt(character: Character): string {
   return `${character.systemPrompt}
 
 ## Instrucción de respuesta (OBLIGATORIO)
-Responde SIEMPRE en un solo bloque 【メッセージ】.
+Responde solo con el texto del mensaje. No escribas etiquetas como 【メッセージ】 ni 【mensaje】; solo el contenido.
 
 Corrección y elogio (dentro de tu respuesta, de forma natural):
 - Si detectas un error de gramática u ortografía del usuario, corrígelo con suavidad dentro del mensaje, sin romper el flujo. Ejemplo: «Por cierto, es "estoy" no "estory" 😄» o «Ojo, se escribe "quiero" con q». Máximo 1 corrección por respuesta; si hay varios errores, señala solo el más importante.
