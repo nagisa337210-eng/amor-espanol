@@ -38,6 +38,7 @@ export function QuizCard({ word, allWords, onNext }: QuizCardProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [showCorrect, setShowCorrect] = useState(false);
   const [answered, setAnswered] = useState<QuizResult | null>(null);
+  const [isNotConfident, setIsNotConfident] = useState(false);
   const correctJapanese = word.japanese;
 
   function handleChoice(choice: string) {
@@ -54,7 +55,8 @@ export function QuizCard({ word, allWords, onNext }: QuizCardProps) {
   }
 
   function handleNotConfident() {
-    // タップしても進めない。このあと4択で答えられる
+    if (answered !== null) return;
+    setIsNotConfident((prev) => !prev);
   }
 
   return (
@@ -99,7 +101,11 @@ export function QuizCard({ word, allWords, onNext }: QuizCardProps) {
         type="button"
         disabled={answered !== null}
         onClick={handleNotConfident}
-        className="mt-2 rounded-2xl border border-cyan-200/80 bg-white/80 py-2.5 text-sm font-medium text-stone-500 transition-colors transition-transform duration-100 hover:bg-cyan-50/80 active:scale-[0.98] active:opacity-80 disabled:pointer-events-none disabled:opacity-60"
+        className={`mt-2 rounded-2xl border py-2.5 text-sm font-medium transition-colors transition-transform duration-100 active:scale-[0.98] active:opacity-80 disabled:pointer-events-none disabled:opacity-60 ${
+          isNotConfident
+            ? "border-cyan-400 bg-cyan-100 text-teal-700"
+            : "border-cyan-200/80 bg-white/80 text-stone-500 hover:bg-cyan-50/80"
+        }`}
       >
         自信なし
       </button>

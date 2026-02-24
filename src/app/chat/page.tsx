@@ -12,6 +12,26 @@ import { getUnreadIds, markRead } from "@/lib/unread";
 const VALID_CHARACTER_IDS: CharacterId[] = ["javi", "alejandro", "mateo", "carlos", "diego"];
 
 const CHAT_STORAGE_PREFIX = "amor-espanol-chat-";
+const LAST_CHAT_CHARACTER_KEY = "amor-espanol-last-chat-character";
+
+function getLastChatCharacter(): CharacterId {
+  if (typeof window === "undefined") return "javi";
+  try {
+    const id = localStorage.getItem(LAST_CHAT_CHARACTER_KEY);
+    return id && VALID_CHARACTER_IDS.includes(id as CharacterId) ? (id as CharacterId) : "javi";
+  } catch {
+    return "javi";
+  }
+}
+
+function setLastChatCharacter(id: CharacterId) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(LAST_CHAT_CHARACTER_KEY, id);
+  } catch {
+    // ignore
+  }
+}
 
 export type ChatMessage = {
   role: "user" | "model";
@@ -118,9 +138,10 @@ async function getAvailableModelIds(apiKey: string): Promise<string[]> {
 function ChatPageContent() {
   const searchParams = useSearchParams();
   const characterParam = searchParams.get("character");
-  const initialId = characterParam && VALID_CHARACTER_IDS.includes(characterParam as CharacterId)
-    ? (characterParam as CharacterId)
-    : "javi";
+  const initialId =
+    characterParam && VALID_CHARACTER_IDS.includes(characterParam as CharacterId)
+      ? (characterParam as CharacterId)
+      : getLastChatCharacter();
 
   const [characterId, setCharacterId] = useState<CharacterId>(initialId);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -132,9 +153,10 @@ function ChatPageContent() {
   const [unreadIds, setUnreadIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const id = characterParam && VALID_CHARACTER_IDS.includes(characterParam as CharacterId)
-      ? (characterParam as CharacterId)
-      : "javi";
+    const id =
+      characterParam && VALID_CHARACTER_IDS.includes(characterParam as CharacterId)
+        ? (characterParam as CharacterId)
+        : getLastChatCharacter();
     setCharacterId(id);
     markRead(id);
   }, [characterParam]);
@@ -142,6 +164,7 @@ function ChatPageContent() {
   useEffect(() => {
     setMessages(loadHistory(characterId));
     markRead(characterId);
+    setLastChatCharacter(characterId);
   }, [characterId]);
 
   useEffect(() => {
@@ -175,17 +198,27 @@ function ChatPageContent() {
     };
   }, [characterId]);
 
-  // メッセージ変更時・キャラ切替時に最新まで即スクロール（レイアウト後に実行）
-  useEffect(() => {
+  // メッセージ変更時・キャラ切替時・タブに戻ったときに最新メッセージが見えるようスクロール
+  const scrollToLatest = useCallback(() => {
     const el = listRef.current;
     if (!el) return;
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        el.scrollTop = el.scrollHeight;
-      });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [messages, characterId]);
+    el.scrollTop = el.scrollHeight;
+  }, []);
+
+  useEffect(() => {
+    scrollToLatest();
+    const t = setTimeout(scrollToLatest, 150);
+    return () => clearTimeout(t);
+  }, [messages, characterId, scrollToLatest]);
+
+  // チャットタブに戻ったときも最新までスクロール
+  useEffect(() => {
+    const onVisible = () => {
+      setTimeout(scrollToLatest, 50);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [scrollToLatest]);
 
   const sendMessage = useCallback(async () => {
     const trimmed = input.trim();
@@ -311,62 +344,64 @@ function ChatPageContent() {
               }}
               title={c.name}
             >
-              <div
-                className="relative flex h-12 w-12 shrink-0 overflow-hidden rounded-full text-lg font-bold text-white shadow"
-                style={{
-                  background:
-                    c.id === "javi" ||
-                    c.id === "carlos" ||
-                    c.id === "alejandro" ||
-                    c.id === "diego" ||
-                    c.id === "mateo"
-                      ? "transparent"
-                      : characterId === c.id
-                        ? "linear-gradient(135deg, #00796b, #4dd0e1)"
-                        : "linear-gradient(135deg, #80deea, #b2ebf2)",
-                }}
-              >
-                {c.id === "javi" ? (
-                  <img
-                    src="/images/javi.png?v=2"
-                    alt={c.name}
-                    className="h-full w-full object-cover"
-                    style={{ objectPosition: "50% 25%" }}
-                  />
-                ) : c.id === "carlos" ? (
-                  <img
-                    src="/images/carlos.png"
-                    alt={c.name}
-                    className="h-full w-full object-cover"
-                    style={{ objectPosition: "50% 20%" }}
-                  />
-                ) : c.id === "alejandro" ? (
-                  <img
-                    src="/images/alejandro.png"
-                    alt={c.name}
-                    className="h-full w-full object-cover"
-                    style={{ objectPosition: "50% 25%" }}
-                  />
-                ) : c.id === "diego" ? (
-                  <img
-                    src="/images/diego.png"
-                    alt={c.name}
-                    className="h-full w-full object-cover"
-                    style={{ objectPosition: "50% 25%" }}
-                  />
-                ) : c.id === "mateo" ? (
-                  <img
-                    src="/images/mateo.png"
-                    alt={c.name}
-                    className="h-full w-full object-cover"
-                    style={{ objectPosition: "50% 5%" }}
-                  />
-                ) : (
-                  c.name.slice(0, 1)
-                )}
+              <div className="relative inline-block shrink-0">
+                <div
+                  className="flex h-12 w-12 overflow-hidden rounded-full text-lg font-bold text-white shadow"
+                  style={{
+                    background:
+                      c.id === "javi" ||
+                      c.id === "carlos" ||
+                      c.id === "alejandro" ||
+                      c.id === "diego" ||
+                      c.id === "mateo"
+                        ? "transparent"
+                        : characterId === c.id
+                          ? "linear-gradient(135deg, #00796b, #4dd0e1)"
+                          : "linear-gradient(135deg, #80deea, #b2ebf2)",
+                  }}
+                >
+                  {c.id === "javi" ? (
+                    <img
+                      src="/images/javi.png?v=2"
+                      alt={c.name}
+                      className="h-full w-full object-cover"
+                      style={{ objectPosition: "50% 25%" }}
+                    />
+                  ) : c.id === "carlos" ? (
+                    <img
+                      src="/images/carlos.png"
+                      alt={c.name}
+                      className="h-full w-full object-cover"
+                      style={{ objectPosition: "50% 20%" }}
+                    />
+                  ) : c.id === "alejandro" ? (
+                    <img
+                      src="/images/alejandro.png"
+                      alt={c.name}
+                      className="h-full w-full object-cover"
+                      style={{ objectPosition: "50% 25%" }}
+                    />
+                  ) : c.id === "diego" ? (
+                    <img
+                      src="/images/diego.png"
+                      alt={c.name}
+                      className="h-full w-full object-cover"
+                      style={{ objectPosition: "50% 25%" }}
+                    />
+                  ) : c.id === "mateo" ? (
+                    <img
+                      src="/images/mateo.png"
+                      alt={c.name}
+                      className="h-full w-full object-cover"
+                      style={{ objectPosition: "50% 5%" }}
+                    />
+                  ) : (
+                    c.name.slice(0, 1)
+                  )}
+                </div>
                 {unreadIds.includes(c.id) && (
                   <span
-                    className="absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-red-500"
+                    className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-red-500"
                     aria-label="未読"
                   />
                 )}
