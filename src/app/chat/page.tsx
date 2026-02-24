@@ -94,10 +94,22 @@ function saveHistory(characterId: CharacterId, messages: ChatMessage[]) {
   }
 }
 
+const FALLBACK_MODEL_IDS = [
+  "gemini-2.5-flash",
+  "gemini-2.5-pro",
+  "gemini-2.0-flash",
+  "gemini-3-flash-preview",
+  "gemini-3-pro-preview",
+];
+
+/** 取得したモデル一覧のキャッシュ（セッション中は再 fetch しない） */
+let cachedModelIds: string[] | null = null;
+
 /** API から利用可能なモデル一覧を取得し、generateContent 対応の ID を返す */
 async function getAvailableModelIds(apiKey: string): Promise<string[]> {
   const envModel = process.env.NEXT_PUBLIC_GEMINI_MODEL?.trim();
   if (envModel) return [envModel];
+  if (cachedModelIds !== null) return cachedModelIds;
 
   try {
     const res = await fetch(
@@ -118,17 +130,15 @@ async function getAvailableModelIds(apiKey: string): Promise<string[]> {
       )
       .map((m) => (m.name!.startsWith("models/") ? m.name!.slice(7) : m.name!))
       .filter(Boolean);
-    if (ids.length > 0) return ids;
+    if (ids.length > 0) {
+      cachedModelIds = ids;
+      return ids;
+    }
   } catch {
     // ignore
   }
-  return [
-    "gemini-2.5-flash",
-    "gemini-2.5-pro",
-    "gemini-2.0-flash",
-    "gemini-3-flash-preview",
-    "gemini-3-pro-preview",
-  ];
+  cachedModelIds = FALLBACK_MODEL_IDS;
+  return FALLBACK_MODEL_IDS;
 }
 
 function ChatPageContent() {
@@ -263,6 +273,10 @@ function ChatPageContent() {
 
       let lastError: unknown;
       let success = false;
+      const createdAt = Date.now();
+      let lastUpdate = 0;
+      const STREAM_UPDATE_INTERVAL_MS = 60;
+
       for (const modelId of modelIds) {
         try {
           const model = genAI.getGenerativeModel({
@@ -272,15 +286,34 @@ function ChatPageContent() {
           const chat = model.startChat({
             history: historyForGemini.slice(0, -1),
           });
-          const result = await chat.sendMessage(trimmed);
-          const response = result.response;
-          const fullText = response.text() ?? "";
+          const result = await chat.sendMessageStream(trimmed);
+          let fullText = "";
 
+          for await (const chunk of result.stream) {
+            try {
+              fullText += chunk.text();
+            } catch {
+              // ブロック等で text() が取れない場合は無視
+            }
+            const now = Date.now();
+            if (now - lastUpdate >= STREAM_UPDATE_INTERVAL_MS || fullText.length < 20) {
+              lastUpdate = now;
+              setMessages([
+                ...newMessages,
+                {
+                  role: "model",
+                  text: fullText,
+                  message: fullText,
+                  createdAt,
+                },
+              ]);
+            }
+          }
+
+          // ストリーム終了後は必ず最終テキストで1回更新
           const { message } = parseGeminiResponse(fullText);
           const bubbles = splitIntoBubbles(message || fullText);
           const finalMessages: ChatMessage[] = [...newMessages];
-
-          const createdAt = Date.now();
           for (const bubble of bubbles) {
             finalMessages.push({
               role: "model",
