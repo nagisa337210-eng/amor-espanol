@@ -95,12 +95,12 @@ function saveHistory(characterId: CharacterId, messages: ChatMessage[]) {
 }
 
 const FALLBACK_MODEL_IDS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-pro",
-  "gemini-2.0-flash",
-  "gemini-3-flash-preview",
-  "gemini-3-pro-preview",
-];
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-2.0-flash-lite",
+    "gemini-3-flash-preview",
+    "gemini-3-pro-preview",
+  ];
 
 /** 取得したモデル一覧のキャッシュ（セッション中は再 fetch しない） */
 let cachedModelIds: string[] | null = null;

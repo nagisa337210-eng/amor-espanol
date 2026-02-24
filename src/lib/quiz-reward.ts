@@ -3,7 +3,7 @@ import { CHARACTERS, getCharacter } from "@/data/characters";
 import type { CharacterId } from "@/data/characters";
 import type { WordItem } from "@/types/word";
 
-const MODEL = process.env.NEXT_PUBLIC_GEMINI_MODEL || "gemini-2.0-flash";
+const MODEL = process.env.NEXT_PUBLIC_GEMINI_MODEL || "gemini-2.0-flash-lite";
 
 function buildProfileList(): string {
   return CHARACTERS.map(
