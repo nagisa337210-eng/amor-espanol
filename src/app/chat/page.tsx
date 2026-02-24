@@ -72,10 +72,6 @@ function splitIntoBubbles(message: string): string[] {
   return [trimmed];
 }
 
-function randomDelay(min = 500, max = 1000): Promise<void> {
-  return new Promise((r) => setTimeout(r, min + Math.random() * (max - min)));
-}
-
 function loadHistory(characterId: CharacterId): ChatMessage[] {
   if (typeof window === "undefined") return [];
   try {
@@ -148,6 +144,7 @@ function ChatPageContent() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   const character = getCharacter(characterId);
   const [unreadIds, setUnreadIds] = useState<string[]>([]);
@@ -200,21 +197,25 @@ function ChatPageContent() {
 
   // メッセージ変更時・キャラ切替時・タブに戻ったときに最新メッセージが見えるようスクロール
   const scrollToLatest = useCallback(() => {
-    const el = listRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
   }, []);
 
   useEffect(() => {
     scrollToLatest();
-    const t = setTimeout(scrollToLatest, 150);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(scrollToLatest, 100);
+    const t2 = setTimeout(scrollToLatest, 350);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [messages, characterId, scrollToLatest]);
 
   // チャットタブに戻ったときも最新までスクロール
   useEffect(() => {
     const onVisible = () => {
-      setTimeout(scrollToLatest, 50);
+      if (document.visibilityState !== "visible") return;
+      scrollToLatest();
+      setTimeout(scrollToLatest, 100);
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
@@ -279,16 +280,16 @@ function ChatPageContent() {
           const bubbles = splitIntoBubbles(message || fullText);
           const finalMessages: ChatMessage[] = [...newMessages];
 
-          for (let i = 0; i < bubbles.length; i++) {
-            await randomDelay(500, 1000);
+          const createdAt = Date.now();
+          for (const bubble of bubbles) {
             finalMessages.push({
               role: "model",
               text: fullText,
-              message: bubbles[i],
-              createdAt: Date.now(),
+              message: bubble,
+              createdAt,
             });
-            setMessages([...finalMessages]);
           }
+          setMessages([...finalMessages]);
           saveHistory(characterId, finalMessages);
           success = true;
           break;
@@ -486,6 +487,7 @@ function ChatPageContent() {
               </div>
             </div>
           )}
+          <div ref={bottomRef} aria-hidden className="h-0 shrink-0" />
         </div>
       </main>
 
